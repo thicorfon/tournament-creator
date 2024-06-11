@@ -1,5 +1,57 @@
 from math import ceil
 from random import shuffle
+from django.db.models import Q
+
+
+def calculate_tiebreakers(not_ordered_rank, opponents_list):
+    tiebreakers = {}
+    for player_name in list(not_ordered_rank.keys()):
+        player_opponents = opponents_list[player_name]
+        numerator = 0
+        denominator = 0
+        for opponent in player_opponents:
+            numerator += not_ordered_rank[opponent]
+            denominator += 1
+        if denominator != 0:
+            tiebreakers[player_name] = numerator / denominator
+        else:
+            tiebreakers[player_name] = 0
+    return tiebreakers
+
+
+def calculate_ranking_with_tiebreakers(list_of_matches, player_names):
+    not_ordered_rank = {}
+    opponents_list = {}
+    for player_name in player_names:
+        opponents_list[player_name] = []
+    for match in list_of_matches:
+        for player in match.players.all():
+            aux = not_ordered_rank.get(player.name, None)
+            opponents = match.players.filter(~Q(name=player.name)).all()
+            opponents_list[player.name].extend([x.name for x in opponents])
+            if aux is None:
+                not_ordered_rank[player.name] = match.result[player.name]
+            else:
+                not_ordered_rank[player.name] += match.result[player.name]
+    for player_name in player_names:
+        aux = not_ordered_rank.get(player_name, None)
+        if aux is None:
+            not_ordered_rank[player_name] = 0
+    tiebreakers = calculate_tiebreakers(not_ordered_rank, opponents_list)
+    second_tiebreakers = calculate_tiebreakers(tiebreakers, opponents_list)
+    final_not_ordered_rank = []
+    for player_name in list(not_ordered_rank.keys()):
+        final_not_ordered_rank.append(
+            (
+                player_name,
+                not_ordered_rank[player_name],
+                tiebreakers[player_name],
+                second_tiebreakers[player_name],
+            )
+        )
+    return sorted(
+        final_not_ordered_rank, key=lambda x: (x[1], x[2], x[3]), reverse=True
+    )
 
 
 def randomize_and_order_rank(not_ordered_rank):

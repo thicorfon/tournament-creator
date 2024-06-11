@@ -2,8 +2,16 @@ from django.http import HttpResponse
 from django.shortcuts import render
 
 from .models import Player, Tournament, TournamentStatus, Round, Match
-from .front_logic import build_player_list, build_round_summary
-from .logic import calculate_random_ranking, calculate_round_matches
+from .front_logic import (
+    build_player_list,
+    build_round_summary,
+    build_player_list_with_rank,
+)
+from .logic import (
+    calculate_random_ranking,
+    calculate_round_matches,
+    calculate_ranking_with_tiebreakers,
+)
 
 
 def hi(request):
@@ -90,7 +98,13 @@ def tournament_summary(request, name):
             current_tournament.save()
 
     response = f"<h1> Tournament: {current_tournament.name}</h1>"
-    response += build_player_list(current_tournament.players.all())
+    tournament_rounds = Round.objects.filter(tournament=current_tournament).all()
+    tournament_matches = Match.objects.filter(round__in=tournament_rounds).all()
+    response += build_player_list_with_rank(
+        calculate_ranking_with_tiebreakers(
+            tournament_matches, [x.name for x in current_tournament.players.all()]
+        )
+    )
     response += f"<h2><b>Tournament Status:</b> {current_tournament.status} <br></h2>"
     response += (
         f"<h2><b>Current Round:</b> {current_tournament.current_round} <br></h2>"

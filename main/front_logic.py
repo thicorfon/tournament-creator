@@ -7,6 +7,15 @@ def build_player_list(player_list):
     return component
 
 
+def build_player_list_with_rank(rank):
+    component = "<h2>Players: </h2><ol>"
+    for player in rank:
+        component += "\n"
+        component += f"<li>{player[0]}; Points: {player[1]}; SoS: {player[2]}; SSoS: {player[3]}</li>"
+    component += "</ol>"
+    return component
+
+
 def build_round_summary(round_matches, report=True):
     component = ""
     if report:
